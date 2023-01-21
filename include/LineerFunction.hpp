@@ -22,6 +22,7 @@ class LineerFunction
 	float GetYPos(float xPos) const;
 
       private:
+	LineerFunction(bool swap, float slope, float add, float distanceFactor);
 	bool swap;
 	float slope;
 	float add;

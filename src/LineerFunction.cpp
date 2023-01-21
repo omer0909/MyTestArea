@@ -22,6 +22,12 @@ LineerFunction::LineerFunction(Vector2 point1, Vector2 const &point2)
 
 LineerFunction::LineerFunction(LineerFunction const &other) { *this = other; }
 
+LineerFunction::LineerFunction(bool _swap, float _slope, float _add,
+			       float _distanceFactor)
+    : swap(_swap), slope(_slope), add(_add), distanceFactor(_distanceFactor)
+{
+}
+
 LineerFunction &LineerFunction::operator=(LineerFunction const &other)
 {
 	slope = other.slope;
@@ -67,12 +73,8 @@ void LineerFunction::SetPoint(Vector2 point)
 
 LineerFunction LineerFunction::Ratate90()
 {
-	LineerFunction tmp(*this);
-	tmp.swap = !swap;
-	tmp.slope = -slope;
-	if (swap)
-		tmp.distanceFactor = -distanceFactor;
-	return tmp;
+	return LineerFunction(!swap, -slope, add,
+			      swap ? -distanceFactor : distanceFactor);
 }
 
 float LineerFunction::Distance(Vector2 point) const

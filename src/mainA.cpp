@@ -47,8 +47,7 @@ int main()
 	}
 
 	// initialize convex shape points list
-	std::vector<int> convex;
-	convex.push_back(0);
+	std::vector<int> convex(1);
 
 	// find max height point
 	float maxHeight = std::numeric_limits<float>::min();

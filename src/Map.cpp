@@ -5,12 +5,15 @@
 
 Map::Map(std::string const &file)
 {
-	ReadFile(file);
 	r = 10;
-	std::cout << pointsSize << std::endl;
+	ReadFile(file);
 }
 
-Map::~Map() { delete[] points; }
+Map::~Map()
+{
+	delete[] points;
+	delete[] walls;
+}
 
 void Map::DrawWalls(TestArea &screen)
 {
@@ -38,14 +41,34 @@ static inline bool SegmentCross(Vector2 const &pA1, Vector2 const &pA2,
 	return cases[0] != cases[1] && cases[2] != cases[3];
 }
 
-bool Map::IsBack(int pos, Vector2 const &target)
+bool Map::IsFront(int pos, Vector2 const &target)
 {
 	const bool case1 =
-	    PointDir(points[pos], points[(pos + 1) % pointsSize], target);
-	const bool case2 = PointDir(points[(pos - 1 + pointsSize) % pointsSize],
-				    points[pos], target);
+	    PointDir(points[(pos + 1) % pointsSize], points[pos], target);
+	const bool case2 = PointDir(
+	    points[pos], points[(pos - 1 + pointsSize) % pointsSize], target);
 
 	return case1 || case2;
+}
+
+bool Map::IsFrontLeft(int pos, Vector2 const &target)
+{
+	const int posA = pos * 2;
+	const int posB = ((pos - 1 + pointsSize) % pointsSize) * 2;
+	const bool case1 = PointDir(walls[posA + 1], walls[posA], target);
+	const bool case2 = PointDir(walls[posB], walls[posB + 1], target);
+
+	return case1 && case2;
+}
+
+bool Map::IsFrontRight(int pos, Vector2 const &target)
+{
+	const int posA = pos * 2;
+	const int posB = ((pos - 1 + pointsSize) % pointsSize) * 2;
+	const bool case1 = PointDir(walls[posA], walls[posA + 1], target);
+	const bool case2 = PointDir(walls[posB + 1], walls[posB], target);
+
+	return case1 && case2;
 }
 
 bool Map::DirectWayControl(Vector2 const &pos, Vector2 const &target,
@@ -102,9 +125,10 @@ void MoveR(Vector2 const &point, Vector2 const &circle, float r, Vector2 &left,
 	right = circle - leftDir * sin - dir * cos;
 }
 
+bool collisionDetect() { return false; }
+
 void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 {
-	
 	if (DirectWayControl(pos, target, screen)) {
 		std::cout << "Direct way is clean" << std::endl;
 		return;
@@ -113,25 +137,41 @@ void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 	std::vector<int> corners;
 
 	for (int i = 0; i < (int)pointsSize; i++) {
-
 		if (PointDir(points[(i - 1 + pointsSize) % pointsSize],
 			     points[i], points[(i + 1) % pointsSize]))
 			corners.push_back(i);
 	}
 
+	for (int i = 0; i < pointsSize * 2; i += 2) {
+		screen.DrawLine(walls[i], walls[i + 1], color::yellow);
+	}
+
 	for (int i : corners) {
-		if (!CrossControl(pos, i)) {
-			Vector2 left, right;
 
-			MoveR(points[i], pos, r, left, right);
-			if (PointDir(points[i], points[(i + 1) % pointsSize],
-				     right))
-				screen.DrawLine(right, points[i], color::blue);
+		Vector2 left, right;
 
-			if (PointDir(points[(i - 1 + pointsSize) % pointsSize],
-				     points[i], left))
-				screen.DrawLine(left, points[i], color::blue);
-		}
+		MoveR(pos, points[i], r, left, right);
+
+		// if (!x(i, pos + (points[i] - right)) &&
+		//     !PointDir(points[i], points[(i + 1) % pointsSize],
+		//     right))
+		// 	screen.DrawLine(right, pos, color::blue);
+
+		// PointDir(points[(i - 1 + pointsSize) % pointsSize],
+		// points[i], 	 left);
+
+		if (IsFrontLeft(i, pos))
+			screen.DrawLine(left, pos, color::blue);
+
+		if (IsFrontRight(i, pos))
+			screen.DrawLine(right, pos, color::blue);
+
+		// if (PointDir(points[i], points[(i + 1) % pointsSize], right))
+		// 	screen.DrawLine(right, points[i], color::blue);
+
+		// if (PointDir(points[(i - 1 + pointsSize) % pointsSize],
+		// 	     points[i], left))
+		// 	screen.DrawLine(left, points[i], color::blue);
 	}
 
 	for (auto i : corners) {
@@ -158,10 +198,9 @@ void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 
 	search algoritmsını kullanırken bir elemana erişilip erişimediğini
 	kontrol için boolean bir array kullanılabilir. bir de tüm elemanların
-
 	*/
 
-	//DrawWalls(screen);
+	// DrawWalls(screen);
 	screen.DrawCircle(pos, r, color::red);
 }
 
@@ -237,4 +276,14 @@ void Map::ReadFile(std::string const &name)
 
 	ListCopyToArray<Vector2>(points_list, points);
 	pointsSize = points_list.size();
+
+	walls = new Vector2[pointsSize * 2];
+	for (int i = 0; i < pointsSize; i++) {
+		Vector2 const &a = points[i];
+		Vector2 const &b = points[(i + 1) % pointsSize];
+		Vector2 dir = (a - b).Normalized() * r;
+		Vector2 crossDir(-dir.y, dir.x);
+		walls[i * 2] = a + crossDir;
+		walls[i * 2 + 1] = b + crossDir;
+	}
 }
