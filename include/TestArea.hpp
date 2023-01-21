@@ -34,4 +34,5 @@ class TestArea
 	void DrawLine(Vector2 a, Vector2 b, unsigned int color = color::white);
 	void DrawCircle(Vector2 center, float radious,
 			unsigned int color = color::white);
+	void UpdateSurface();
 };

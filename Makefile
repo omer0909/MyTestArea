@@ -1,8 +1,8 @@
 NAME = out
-CPPFLAGS = -Wall -Wextra -Wshadow -std=c++20 -MD -Ofast
+CPPFLAGS = -Wall -Wextra -Wshadow -std=c++20 -MD #-Ofast
 LIBS = -lSDL2 -lpng
 CC = g++
-SRC = main.cpp Window.cpp Vector2.cpp LineerFunction.cpp TestArea.cpp
+SRC = main.cpp Window.cpp LineerFunction.cpp TestArea.cpp Map.cpp
 INCDIR = include /usr/include/SDL2
 SRCDIR = src
 

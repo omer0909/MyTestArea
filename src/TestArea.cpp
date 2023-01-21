@@ -145,6 +145,8 @@ void TestArea::Event()
 	}
 }
 
+void TestArea::UpdateSurface() { window.UpdateSurface(); }
+
 void TestArea::DrawCircle(Vector2 center, float radious, unsigned int color)
 {
 	for (int x = -radious; x <= radious; x++) {

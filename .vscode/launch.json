@@ -5,7 +5,7 @@
 			"type": "cppdbg",
 			"request": "launch",
 			"program": "${workspaceFolder}/out",
-			"args": ["./test.obj"],
+			"args": ["./TestMap.txt "],
 			"stopAtEntry": false,
 			"cwd": "${workspaceFolder}",
 			"environment": [],

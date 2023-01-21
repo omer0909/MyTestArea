@@ -1,181 +1,89 @@
-
-#include <LineerFunction.hpp>
+#include <Map.hpp>
 #include <TestArea.hpp>
 
-struct Box {
-	Vector2 pos;
-	Vector2 dir;
-	Vector2 size;
-};
+#include <chrono>
 
-float RandomRange(float start, float end)
+// auto start = std::chrono::system_clock::now();
+// //
+// auto now = std::chrono::system_clock::now();
+// std::chrono::duration<float> elapsed_seconds = now - start;
+// std::cout << elapsed_seconds.count() << std::endl;
+
+int main(int argc, char **argv)
 {
-	float value = end - start;
-	return start + static_cast<float>(rand()) /
-			   (static_cast<float>(RAND_MAX / value));
+	if (argc != 2) {
+		std::cerr << "./out map.txt" << std::endl;
+		return -1;
+	}
+
+	TestArea screen(500, 500);
+	Map map(argv[1]);
+
+	map.DrawWalls(screen);
+	map.CalculatePath(Vector2(-100, -120), Vector2(100, 170), screen);
+
+	return 0;
 }
 
-#include <unistd.h>
-
-int main()
+int mainE()
 {
-	// extra randomize
-	//  for (int i = 0; i < 500; i++)
-	//  	rand();
-
-	// create test area
 	TestArea screen(500, 500);
 
-	// draw star
-	//  screen.SetPixel(Vector2(50, 50), color::white);
-	//  for (float i = 0; i < M_PI * 2; i += M_PI / 16) {
-	//  	screen.DrawLine(Vector2(0, 0), Vector2(cos(i), sin(i)) *
-	//  100, color::magenta);
-	//  }
+	Vector2 point(-50, 50);
+	Vector2 circle(100, 0);
+	float r = 100;
 
-	// create random points
-	std::vector<Vector2> points;
-	for (int i = 0; i < 30; i++) {
-		Vector2 tmp(RandomRange(-100, 100), RandomRange(-100, 100));
-		if (tmp.SqrMagnitude() < 100 * 100)
-			points.push_back(tmp);
+	screen.SetPixel(point, color::red);
+	screen.SetPixel(circle, color::green);
+	screen.DrawCircle(circle, r, color::green);
+	///////////////
+
+	const Vector2 diff = circle - point;
+	const float sqrDistance = diff.SqrMagnitude();
+	const float distanceDiv = 1 / std::sqrt(sqrDistance);
+	const Vector2 dir = diff * distanceDiv;
+	const float leftDistance = std::sqrt(sqrDistance - r * r);
+	const float leftHeight = (leftDistance * r) * distanceDiv;
+	const Vector2 leftDir(-dir.y, dir.x);
+	const float distancePoint = leftDistance * (leftHeight / r);
+	Vector2 left = point + leftDir * leftHeight + dir * distancePoint;
+	Vector2 right = point - leftDir * leftHeight + dir * distancePoint;
+
+	screen.DrawLine(point, circle, color::blue);
+	screen.DrawLine(point, left, color::yellow);
+	screen.DrawLine(point, right, color::yellow);
+	return 0;
+}
+
+#include <map>
+int mainC()
+{
+	std::map<float, std::string> map;
+
+	map.insert({2.0f, "iki"});
+	map.insert({3.5f, "üç buçuk"});
+	map.insert({4.0f, "dört"});
+	map.insert({1.0f, "bir"});
+	map.insert({3.0f, "üç"});
+	map.insert({3.0f, "üç new"});
+
+	for (auto &value : map) {
+
+		std::cout << value.second << std::endl;
 	}
+	return 0;
+}
 
-	// draw random points
-	for (unsigned int i = 0; i < points.size(); i++) {
-		screen.SetPixel(points[i], 0xFF00F0FF << i);
-	}
+int mainD()
+{
 
-	// initialize convex shape points list
-	std::vector<int> convex;
-	convex.push_back(0);
+	static auto start = std::chrono::system_clock::now();
+	// char *v = new char[90000000];
+	std::vector<char> v(90000000);
+	auto now = std::chrono::system_clock::now();
 
-	// find max height point
-	float maxHeight = std::numeric_limits<float>::min();
-	for (unsigned int i = 0; i < points.size(); i++) {
-		if (points[i].y > maxHeight) {
-			maxHeight = points[i].y;
-			convex[0] = i;
-		}
-	}
+	std::chrono::duration<float> elapsed_seconds = now - start;
 
-	// draw a circle on max height point
-	screen.DrawCircle(points[convex[0]], 5, color::red);
-
-	// search other convex points with dot product
-	Vector2 lastNormal = Vector2(0, 1);
-	Vector2 lastPoint = points[convex[0]];
-
-	for (unsigned int i = 0; i < points.size(); i++) {
-		int selected;
-		float maxAngle = -1;
-
-		for (unsigned int j = 0; j < points.size(); j++) {
-			Vector2 tmpVector = points[j] - lastPoint;
-			if (tmpVector.SqrMagnitude() < EPSILON)
-				continue;
-
-			float tmpAngle = Vector2::DotProduct(
-			    lastNormal, tmpVector.Normalized());
-			if (tmpAngle > maxAngle) {
-				maxAngle = tmpAngle;
-				selected = j;
-			}
-		}
-		if (selected == convex[0])
-			break;
-
-		lastPoint = points[selected];
-		lastNormal =
-		    (points[selected] - points[convex.back()]).Normalized();
-		convex.push_back(selected);
-	}
-
-	// Draw convex shape
-	screen.DrawLine(points[convex[0]], points[convex[1]], color::white);
-	for (size_t i = 1; i < convex.size(); i++) {
-
-		unsigned int col = color::blue;
-		if (LineerFunction(points[convex[i]],
-				   points[convex[(i + 1) % convex.size()]])
-			.Distance(Vector2(0, 0)) > 0)
-			col = color::green;
-
-		screen.DrawLine(points[convex[i]],
-				points[convex[(i + 1) % convex.size()]], col);
-		screen.DrawCircle(points[convex[i]], 5, col);
-	}
-
-	// search the minimum box on the all points
-	float minArea = std::numeric_limits<float>::max();
-	Box box;
-
-	for (size_t i = 0; i < convex.size(); i++) {
-		const Vector2 a = points[convex[i]];
-		const Vector2 b = points[convex[(i + 1) % convex.size()]];
-
-		LineerFunction func(a, b);
-		LineerFunction crossFunc(func.Ratate90());
-		crossFunc.SetPoint(a);
-
-		Vector2 dir = (b - a).Normalized();
-
-		float boxMin = std::numeric_limits<float>::max();
-		float boxMax = std::numeric_limits<float>::min();
-
-		float boxCMin = std::numeric_limits<float>::max();
-		float boxCMax = std::numeric_limits<float>::min();
-
-		for (auto &point : points) {
-
-			float distance = func.Distance(point);
-			if (distance < boxMin)
-				boxMin = distance;
-			if (distance > boxMax)
-				boxMax = distance;
-
-			float cDistance = crossFunc.Distance(point);
-
-			if (cDistance < boxCMin)
-				boxCMin = cDistance;
-			if (cDistance > boxCMax)
-				boxCMax = cDistance;
-		}
-
-		const Vector2 boxSize(boxMax - boxMin, boxCMax - boxCMin);
-		float area = boxSize.x * boxSize.y;
-
-		if (area < minArea) {
-			minArea = area;
-
-			Vector2 crossDir(-dir.y, dir.x);
-
-			Vector2 boxPos = a;
-			boxPos = boxPos + crossDir * boxMax;
-			boxPos = boxPos + dir * boxCMin;
-
-			box.pos = boxPos;
-			box.size = boxSize;
-			box.dir = dir;
-		}
-	}
-
-	// draw minimum area size box
-	Vector2 boxCrossDir(box.dir.y, -box.dir.x);
-
-	screen.DrawCircle(box.pos, 10);
-
-	Vector2 boxPoints[] = {box.pos,
-
-			       box.pos + (box.dir * box.size.y),
-
-			       box.pos + (box.dir * box.size.y) +
-				   boxCrossDir * box.size.x,
-
-			       box.pos + boxCrossDir * box.size.x};
-
-	for (size_t i = 0; i < 4; i++) {
-		screen.DrawLine(boxPoints[i], boxPoints[(i + 1) % 4],
-				color::yellow);
-	}
+	std::cout << elapsed_seconds.count() << std::endl;
+	return 0;
 }
