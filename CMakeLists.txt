@@ -16,7 +16,8 @@ set(PROJECT_SOURCES ${PROJECT_SOURCE_DIR}/main.cpp
                     ${PROJECT_SOURCE_DIR}/Window.cpp
                     ${PROJECT_SOURCE_DIR}/LineerFunction.cpp
                     ${PROJECT_SOURCE_DIR}/TestArea.cpp
-                    ${PROJECT_SOURCE_DIR}/Map.cpp)
+                    ${PROJECT_SOURCE_DIR}/Map.cpp
+                    ${PROJECT_SOURCE_DIR}/MapData.cpp)
     
 set(PROJECT_INCLUDE_DIR 
     ${PROJECT_DIR}/include
