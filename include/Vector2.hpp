@@ -66,6 +66,11 @@ class Vector2
 		return a.x * b.x + a.y * b.y;
 	}
 
+	inline static Vector2 Lerp(const Vector2 &a, const Vector2 &b, float value)
+	{
+		return (b - a) * value + a;
+	}
+
 	inline static Vector2 Zero() { return Vector2(0, 0); }
 
 	inline static Vector2 One() { return Vector2(1, 1); }
@@ -84,6 +89,6 @@ class Vector2
 
 inline std::ostream &operator<<(std::ostream &o, Vector2 const &v)
 {
-	o << "{" << v.x << ", " << v.y << " }" << std::endl;
+	o << "{" << v.x << ", " << v.y << "}" << std::endl;
 	return (o);
 }

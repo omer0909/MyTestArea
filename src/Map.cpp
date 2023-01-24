@@ -1,25 +1,27 @@
 #include <Map.hpp>
-#include <fstream>
-#include <list>
-#include <sstream>
 
-Map::Map(std::string const &file)
+Map::Map(std::string const &file) : data(file)
 {
 	r = 10;
-	ReadFile(file);
+
+	walls = new Vector2[data.size * 2];
+	for (int i = 0; i < data.size; i++) {
+		Vector2 const &a = data.points[i];
+		Vector2 const &b = data.Forward(i);
+		Vector2 dir = (a - b).Normalized() * r;
+		Vector2 crossDir(-dir.y, dir.x);
+		walls[i * 2] = a + crossDir;
+		walls[i * 2 + 1] = b + crossDir;
+	}
 }
 
-Map::~Map()
-{
-	delete[] points;
-	delete[] walls;
-}
+Map::~Map() { delete[] walls; }
 
 void Map::DrawWalls(TestArea &screen)
 {
-	for (unsigned int i = 0; i < pointsSize; i++) {
-		screen.DrawCircle(points[i], 3, color::green);
-		screen.DrawLine(points[i], points[(i + 1) % pointsSize]);
+	for (unsigned int i = 0; i < data.size; i++) {
+		screen.DrawCircle(data.points[i], 3, color::green);
+		screen.DrawLine(data.points[i], data.Forward(i));
 	}
 }
 
@@ -44,9 +46,8 @@ static inline bool SegmentCross(Vector2 const &pA1, Vector2 const &pA2,
 bool Map::IsFront(int pos, Vector2 const &target)
 {
 	const bool case1 =
-	    PointDir(points[(pos + 1) % pointsSize], points[pos], target);
-	const bool case2 = PointDir(
-	    points[pos], points[(pos - 1 + pointsSize) % pointsSize], target);
+	    PointDir(data.Forward(pos), data.points[pos], target);
+	const bool case2 = PointDir(data.points[pos], data.Back(pos), target);
 
 	return case1 || case2;
 }
@@ -54,7 +55,7 @@ bool Map::IsFront(int pos, Vector2 const &target)
 bool Map::IsFrontLeft(int pos, Vector2 const &target)
 {
 	const int posA = pos * 2;
-	const int posB = ((pos - 1 + pointsSize) % pointsSize) * 2;
+	const int posB = data.BackIndex(pos) * 2;
 	const bool case1 = PointDir(walls[posA + 1], walls[posA], target);
 	const bool case2 = PointDir(walls[posB], walls[posB + 1], target);
 
@@ -64,52 +65,60 @@ bool Map::IsFrontLeft(int pos, Vector2 const &target)
 bool Map::IsFrontRight(int pos, Vector2 const &target)
 {
 	const int posA = pos * 2;
-	const int posB = ((pos - 1 + pointsSize) % pointsSize) * 2;
+	const int posB = data.BackIndex(pos) * 2;
 	const bool case1 = PointDir(walls[posA], walls[posA + 1], target);
 	const bool case2 = PointDir(walls[posB + 1], walls[posB], target);
 
 	return case1 && case2;
 }
 
-bool Map::DirectWayControl(Vector2 const &pos, Vector2 const &target,
-			   TestArea &screen)
+bool Map::CollisionControl(Vector2 const &a, Vector2 const &b, TestArea &screen)
 {
-	const Vector2 dir = (target - pos).Normalized();
+	const Vector2 dir = (b - a).Normalized();
 	const Vector2 crossDir(-dir.y, dir.x);
-	const Vector2 addPos = crossDir * r;
+	const Vector2 add = crossDir * r;
 
-	for (unsigned int i = 0; i < pointsSize; i++) {
-		if (SegmentCross(pos + addPos, target + addPos, points[i],
-				 points[(i + 1) % pointsSize]))
+	screen.DrawLine(a + add, b + add, color::red);
+	screen.DrawLine(a - add, b - add, color::red);
+
+	for (unsigned int i = 0; i < data.size; i++) {
+		if (SegmentCross(a + add, b + add, data.points[i],
+				 data.Forward(i)))
 			return false;
 	}
 
-	for (unsigned int i = 0; i < pointsSize; i++) {
-		if (SegmentCross(pos - addPos, target - addPos, points[i],
-				 points[(i + 1) % pointsSize]))
+	for (unsigned int i = 0; i < data.size; i++) {
+		if (SegmentCross(a - add, b - add, data.points[i],
+				 data.Forward(i)))
 			return false;
 	}
-
-	screen.DrawLine(pos + addPos, target + addPos, color::red);
-	screen.DrawLine(pos - addPos, target - addPos, color::red);
 	return true;
 }
 
-bool Map::CrossControl(Vector2 const &a, int index) const
+bool Map::CollisionControl(Vector2 const &a, Vector2 const &b, int aIndex,
+			   TestArea &screen)
 {
-	for (int i = index + 1; i < pointsSize + index - 1; i++) {
-		if (SegmentCross(a, points[index], points[i % pointsSize],
-				 points[(i + 1) % pointsSize]))
-			return true;
+	for (int i = 0; i < data.size * 2; i += 2) {
+		if (SegmentCross(b, a, walls[i], walls[i + 1]) && i != aIndex &&
+		    i != data.BackIndex(i)) {
+			return false;
+		}
 	}
-	return false;
+	return true;
 }
 
-bool Map::CrossControl(Vector2 const &a, Vector2 const &b,
-		       unsigned int outerSetA, unsigned int outerSetB) const
+bool Map::CollisionControl(int aIndex, int bIndex, TestArea &screen)
 {
-
-	return false;
+	Vector2 const &a = data.points[aIndex];
+	Vector2 const &b = data.points[bIndex];
+	for (int i = 0; i < data.size; i++) {
+		if (SegmentCross(a, b, walls[i * 2], walls[(i * 2) + 1]) &&
+		    i != aIndex && i != data.BackIndex(aIndex) && i != bIndex &&
+		    i != data.BackIndex(bIndex)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 void MoveR(Vector2 const &point, Vector2 const &circle, float r, Vector2 &left,
@@ -125,24 +134,30 @@ void MoveR(Vector2 const &point, Vector2 const &circle, float r, Vector2 &left,
 	right = circle - leftDir * sin - dir * cos;
 }
 
-bool collisionDetect() { return false; }
+class Station
+{
+      public:
+	Station();
+};
 
 void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 {
-	if (DirectWayControl(pos, target, screen)) {
+
+	// std::map<float, int>;
+
+	if (CollisionControl(pos, target, screen)) {
 		std::cout << "Direct way is clean" << std::endl;
 		return;
 	} else
 		std::cout << "Direct way is not clean" << std::endl;
 	std::vector<int> corners;
 
-	for (int i = 0; i < (int)pointsSize; i++) {
-		if (PointDir(points[(i - 1 + pointsSize) % pointsSize],
-			     points[i], points[(i + 1) % pointsSize]))
+	for (int i = 0; i < data.size; i++) {
+		if (PointDir(data.Back(i), data.points[i], data.Forward(i)))
 			corners.push_back(i);
 	}
 
-	for (int i = 0; i < pointsSize * 2; i += 2) {
+	for (int i = 0; i < data.size * 2; i += 2) {
 		screen.DrawLine(walls[i], walls[i + 1], color::yellow);
 	}
 
@@ -150,7 +165,7 @@ void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 
 		Vector2 left, right;
 
-		MoveR(pos, points[i], r, left, right);
+		MoveR(pos, data.points[i], r, left, right);
 
 		// if (!x(i, pos + (points[i] - right)) &&
 		//     !PointDir(points[i], points[(i + 1) % pointsSize],
@@ -160,10 +175,12 @@ void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 		// PointDir(points[(i - 1 + pointsSize) % pointsSize],
 		// points[i], 	 left);
 
-		if (IsFrontLeft(i, pos))
+		if (IsFrontLeft(i, pos) &&
+		    CollisionControl(left, pos, i, screen))
 			screen.DrawLine(left, pos, color::blue);
 
-		if (IsFrontRight(i, pos))
+		if (IsFrontRight(i, pos) &&
+		    CollisionControl(right, pos, i, screen))
 			screen.DrawLine(right, pos, color::blue);
 
 		// if (PointDir(points[i], points[(i + 1) % pointsSize], right))
@@ -174,8 +191,23 @@ void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 		// 	screen.DrawLine(left, points[i], color::blue);
 	}
 
+	Vector2 beforeA;
+	Vector2 beforeB;
+	{
+	}
+
+	/*
+		// tüm köşelerin kendi arasındaki kombinsayonu
+		for (int i = 0; i < corners.size(); i++) {
+			for (int j = i + 1; j < corners.size(); j++) {
+				std::cout << "a: " << i << ", b: " << j <<
+	   std::endl;
+			}
+		}
+	*/
+
 	for (auto i : corners) {
-		screen.DrawCircle(points[i], 10, color::yellow);
+		screen.DrawCircle(data.points[i], 10, color::yellow);
 	}
 
 	/*kararlaştırılan algoritma:
@@ -240,50 +272,3 @@ void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 // 	}
 // 	DrawWalls(screen);
 // }
-
-template <typename T>
-static void ListCopyToArray(std::list<T> const &src, T *&arr)
-{
-	arr = new T[src.size()];
-	int i = 0;
-	for (T const &a : src) {
-		arr[i++] = a;
-	}
-}
-
-void Map::ReadFile(std::string const &name)
-{
-	std::fstream file;
-
-	file.open(name, std::ios_base::in);
-	if (file.fail()) {
-		std::cerr << name << " file can not read" << std::endl;
-	}
-
-	std::list<Vector2> points_list;
-	std::string line;
-
-	while (std::getline(file, line)) {
-		std::stringstream ssline(line);
-		Vector2 pos;
-		std::string tmp;
-		ssline >> tmp;
-		pos.x = std::strtof(tmp.c_str(), nullptr);
-		ssline >> tmp;
-		pos.y = std::strtof(tmp.c_str(), nullptr);
-		points_list.push_back(pos);
-	}
-
-	ListCopyToArray<Vector2>(points_list, points);
-	pointsSize = points_list.size();
-
-	walls = new Vector2[pointsSize * 2];
-	for (int i = 0; i < pointsSize; i++) {
-		Vector2 const &a = points[i];
-		Vector2 const &b = points[(i + 1) % pointsSize];
-		Vector2 dir = (a - b).Normalized() * r;
-		Vector2 crossDir(-dir.y, dir.x);
-		walls[i * 2] = a + crossDir;
-		walls[i * 2 + 1] = b + crossDir;
-	}
-}

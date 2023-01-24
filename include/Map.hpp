@@ -2,6 +2,8 @@
 #include <TestArea.hpp>
 #include <Vector2.hpp>
 #include <iostream>
+#include <map>
+#include <MapData.hpp>
 
 class Map
 {
@@ -17,14 +19,15 @@ class Map
 			  unsigned int outerSetA, unsigned int outerSetB) const;
 
       private:
-	bool DirectWayControl(Vector2 const &pos, Vector2 const &target,
+	bool CollisionControl(Vector2 const &a, Vector2 const &b,
 			      TestArea &screen);
+	bool CollisionControl(Vector2 const &a, Vector2 const &b, int aIndex,
+			      TestArea &screen);
+	bool CollisionControl(int a, int b, TestArea &screen);
 	bool IsFront(int pos, Vector2 const &target);
 	bool IsFrontLeft(int pos, Vector2 const &target);
 	bool IsFrontRight(int pos, Vector2 const &target);
-	void ReadFile(std::string const &name);
-	Vector2 *points;
-	unsigned int pointsSize;
+	MapData data;
 	float r;
 	Vector2 *walls;
 };

@@ -20,7 +20,7 @@ int main(int argc, char **argv)
 	Map map(argv[1]);
 
 	map.DrawWalls(screen);
-	map.CalculatePath(Vector2(-100, -120), Vector2(100, 170), screen);
+	map.CalculatePath(Vector2(-100, -120), Vector2(100, 0), screen);
 
 	return 0;
 }
