@@ -20,8 +20,68 @@ int main(int argc, char **argv)
 	Map map(argv[1]);
 
 	map.DrawWalls(screen);
-	map.CalculatePath(Vector2(-100, -120), Vector2(100, 0), screen);
+	map.CalculatePath(Vector2(-150, -180), Vector2(100, 0), screen);
 
+	return 0;
+}
+
+inline bool InSegmant(Vector2 const &a, Vector2 const &b, Vector2 const &pos)
+{
+	const Vector2 diff = b - a;
+	float rate = Vector2::DotProduct(diff, (pos - a));
+	return rate > 0 && rate < diff.SqrMagnitude();
+}
+
+inline float SegmantDistance(Vector2 const &a, Vector2 const &b,
+			     Vector2 const &pos)
+{
+	const Vector2 diff = b - a;
+	const Vector2 crossDir(-diff.y, diff.x);
+	const Vector2 pa = pos - a;
+	if (pa.y * crossDir.x - pa.x * crossDir.y > 0) {
+		return pa.Magnitude();
+	}
+	const Vector2 pb = pos - b;
+	if (pb.y * crossDir.x - pb.x * crossDir.y < 0) {
+		return pb.Magnitude();
+	}
+	return std::abs(Vector2::DotProduct(crossDir, pa) / diff.Magnitude());
+}
+
+inline float SegmantSqrDistance(Vector2 const &a, Vector2 const &b,
+				Vector2 const &pos)
+{
+	const Vector2 diff = b - a;
+	const Vector2 crossDir(-diff.y, diff.x);
+	const Vector2 pa = pos - a;
+	if (pa.y * crossDir.x - pa.x * crossDir.y > 0) {
+		return pa.SqrMagnitude();
+	}
+	const Vector2 pb = pos - b;
+	if (pb.y * crossDir.x - pb.x * crossDir.y < 0) {
+		return pb.SqrMagnitude();
+	}
+	const float dot = Vector2::DotProduct(crossDir, pa);
+	return (dot * dot) / crossDir.SqrMagnitude();
+}
+
+int mainA()
+{
+	TestArea screen(500, 500);
+	Vector2 a(50, -50);
+	Vector2 b(-100, 0);
+
+	for (int x = -250; x < 250; x++) {
+		for (int y = -250; y < 250; y++) {
+
+			screen.SetPixel(x, y,
+					100 << (int)(SegmantSqrDistance(
+							 a, b, Vector2(x, y)) /
+						     100));
+		}
+	}
+
+	screen.DrawLine(a, b);
 	return 0;
 }
 
@@ -58,7 +118,7 @@ int mainE()
 #include <map>
 int mainC()
 {
-	std::map<float, std::string> map;
+	std::multimap<float, std::string> map;
 
 	map.insert({2.0f, "iki"});
 	map.insert({3.5f, "üç buçuk"});
@@ -87,3 +147,45 @@ int mainD()
 	std::cout << elapsed_seconds.count() << std::endl;
 	return 0;
 }
+
+int mainT()
+{
+	constexpr int size = 50000;
+	typedef float test;
+	test *arr = new test[size];
+	test *b = new test[size];
+	for (int i = 0; i < size; i++) {
+		arr[i] = rand();
+		b[i] = arr[i];
+	}
+	auto start = std::chrono::system_clock::now();
+	for (int i = 0; i < size; i++) {
+		for (int j = 1; j < size; j++) {
+			arr[i] = std::sqrt(arr[i]);
+		}
+	}
+	{
+		auto now = std::chrono::system_clock::now();
+
+		std::chrono::duration<float> elapsed_seconds = now - start;
+
+		std::cout << elapsed_seconds.count() << std::endl;
+	}
+}
+// int main()
+// {
+// 	TestArea screen(500, 500);
+
+// 	Vector2 circleA(100, 100);
+// 	Vector2 circleB(-100, -100);
+// 	float r = 50;
+
+// 	screen.DrawCircle(circleA, r);
+// 	screen.DrawCircle(circleB, r);
+
+// 	Vector2 A;
+// 	Vector2 B;
+
+// 	MoveL(circleB, circleA, r, A, B, false);
+// 	screen.DrawLine(A, B);
+// }

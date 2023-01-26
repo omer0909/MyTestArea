@@ -1,5 +1,15 @@
 #include <Map.hpp>
 
+static inline bool PointDir(Vector2 const &pA, Vector2 const &pB,
+			    Vector2 const &pV)
+{
+	const Vector2 lineA = pA - pB;
+	const Vector2 lineB = pB - pV;
+	const float zValue = lineA.y * lineB.x - lineA.x * lineB.y;
+
+	return zValue < 0;
+}
+
 Map::Map(std::string const &file) : data(file)
 {
 	r = 10;
@@ -13,9 +23,19 @@ Map::Map(std::string const &file) : data(file)
 		walls[i * 2] = a + crossDir;
 		walls[i * 2 + 1] = b + crossDir;
 	}
+
+	for (int i = 0; i < data.size; i++) {
+		if (PointDir(data.Back(i), data.points[i], data.Forward(i)))
+			corners.push_back(i);
+	}
+	went = new bool[data.size];
 }
 
-Map::~Map() { delete[] walls; }
+Map::~Map()
+{
+	delete[] walls;
+	delete[] went;
+}
 
 void Map::DrawWalls(TestArea &screen)
 {
@@ -23,16 +43,6 @@ void Map::DrawWalls(TestArea &screen)
 		screen.DrawCircle(data.points[i], 3, color::green);
 		screen.DrawLine(data.points[i], data.Forward(i));
 	}
-}
-
-static inline bool PointDir(Vector2 const &pA, Vector2 const &pB,
-			    Vector2 const &pV)
-{
-	const Vector2 lineA = pA - pB;
-	const Vector2 lineB = pB - pV;
-	const float zValue = lineA.y * lineB.x - lineA.x * lineB.y;
-
-	return zValue < 0;
 }
 
 static inline bool SegmentCross(Vector2 const &pA1, Vector2 const &pA2,
@@ -52,25 +62,89 @@ bool Map::IsFront(int pos, Vector2 const &target)
 	return case1 || case2;
 }
 
-bool Map::IsFrontLeft(int pos, Vector2 const &target)
+bool Map::IsFrontLeft(int corner, Vector2 const &dir)
 {
-	const int posA = pos * 2;
-	const int posB = data.BackIndex(pos) * 2;
-	const bool case1 = PointDir(walls[posA + 1], walls[posA], target);
-	const bool case2 = PointDir(walls[posB], walls[posB + 1], target);
-
+	const Vector2 crossDir(-dir.y, dir.x);
+	const bool case1 =
+	    Vector2::DotProduct(crossDir, data.Forward(corner) -
+					      data.points[corner]) > -EPSILON;
+	const bool case2 =
+	    Vector2::DotProduct(crossDir, data.points[corner] -
+					      data.Back(corner)) < EPSILON;
 	return case1 && case2;
 }
 
-bool Map::IsFrontRight(int pos, Vector2 const &target)
+bool Map::IsFrontRight(int corner, Vector2 const &dir)
 {
-	const int posA = pos * 2;
-	const int posB = data.BackIndex(pos) * 2;
-	const bool case1 = PointDir(walls[posA], walls[posA + 1], target);
-	const bool case2 = PointDir(walls[posB + 1], walls[posB], target);
-
+	const Vector2 crossDir(-dir.y, dir.x);
+	const bool case1 =
+	    Vector2::DotProduct(crossDir, data.Forward(corner) -
+					      data.points[corner]) < EPSILON;
+	const bool case2 =
+	    Vector2::DotProduct(crossDir, data.points[corner] -
+					      data.Back(corner)) > -EPSILON;
 	return case1 && case2;
 }
+
+bool Map::IsFrontLeft(int corner, Vector2 const &before, Vector2 const &dir)
+{
+	const Vector2 crossDir(-dir.y, dir.x);
+	bool case1 =
+	    Vector2::DotProduct(crossDir, data.Back(corner) -
+					      data.points[corner]) > -EPSILON;
+	bool case2 = Vector2::DotProduct(crossDir, before) < EPSILON;
+	return case1 && case2;
+}
+
+bool Map::IsFrontRight(int corner, Vector2 const &before, Vector2 const &dir)
+{
+	const Vector2 crossDir(-dir.y, dir.x);
+	bool case1 =
+	    Vector2::DotProduct(crossDir, data.Forward(corner) -
+					      data.points[corner]) < EPSILON;
+	bool case2 = Vector2::DotProduct(crossDir, before) > -EPSILON;
+	return case1 && case2;
+}
+
+class Station
+{
+      public:
+	inline Station(Station *_beforeStation, Vector2 const &_startPos,
+		       Vector2 const &_endPos, int _corner, bool _turnDir,
+		       float _distance)
+	    : beforeStation(_beforeStation), startPos(_startPos),
+	      endPos(_endPos), corner(_corner), turnDir(_turnDir),
+	      distance(_distance)
+	{
+	}
+	Station *beforeStation;
+	Vector2 startPos;
+	Vector2 endPos;
+	int corner;
+	float distance;
+	bool turnDir;
+};
+
+// bool Map::IsFrontLeft(Station const &station, int pos, Vector2 const &target)
+// {
+// 	const int posA = pos * 2;
+// 	const int posB = data.BackIndex(pos) * 2;
+// 	const bool case1 = PointDir(walls[posA + 1], walls[posA], target);
+// 	const bool case2 = PointDir(walls[posB], walls[posB + 1], target);
+
+// 	return case1 && case2;
+// }
+
+// bool Map::IsFrontRight(Station const &station, int pos, Vector2 const
+// &target)
+// {
+// 	const int posA = pos * 2;
+// 	const int posB = data.BackIndex(pos) * 2;
+// 	const bool case1 = PointDir(walls[posA], walls[posA + 1], target);
+// 	const bool case2 = PointDir(walls[posB + 1], walls[posB], target);
+
+// 	return case1 && case2;
+// }
 
 bool Map::CollisionControl(Vector2 const &a, Vector2 const &b, TestArea &screen)
 {
@@ -95,6 +169,23 @@ bool Map::CollisionControl(Vector2 const &a, Vector2 const &b, TestArea &screen)
 	return true;
 }
 
+inline float SegmantSqrDistance(Vector2 const &a, Vector2 const &b,
+				Vector2 const &pos)
+{
+	const Vector2 diff = b - a;
+	const Vector2 crossDir(-diff.y, diff.x);
+	const Vector2 pa = pos - a;
+	if (pa.y * crossDir.x - pa.x * crossDir.y > 0) {
+		return pa.SqrMagnitude();
+	}
+	const Vector2 pb = pos - b;
+	if (pb.y * crossDir.x - pb.x * crossDir.y < 0) {
+		return pb.SqrMagnitude();
+	}
+	const float dot = Vector2::DotProduct(crossDir, pa);
+	return (dot * dot) / crossDir.SqrMagnitude();
+}
+
 bool Map::CollisionControl(Vector2 const &a, Vector2 const &b, int aIndex,
 			   TestArea &screen)
 {
@@ -104,19 +195,29 @@ bool Map::CollisionControl(Vector2 const &a, Vector2 const &b, int aIndex,
 			return false;
 		}
 	}
+	for (int i : corners) {
+		if (SegmantSqrDistance(a, b, data.points[i]) < r * r &&
+		    i != aIndex && i != data.BackIndex(i))
+			return false;
+	}
 	return true;
 }
 
-bool Map::CollisionControl(int aIndex, int bIndex, TestArea &screen)
+bool Map::CollisionControl(Vector2 const &a, Vector2 const &b, int aIndex,
+			   int bIndex, TestArea &screen)
 {
-	Vector2 const &a = data.points[aIndex];
-	Vector2 const &b = data.points[bIndex];
 	for (int i = 0; i < data.size; i++) {
 		if (SegmentCross(a, b, walls[i * 2], walls[(i * 2) + 1]) &&
 		    i != aIndex && i != data.BackIndex(aIndex) && i != bIndex &&
 		    i != data.BackIndex(bIndex)) {
 			return false;
 		}
+	}
+	for (int i : corners) {
+		if (SegmantSqrDistance(a, b, data.points[i]) < r * r &&
+		    i != aIndex && i != data.BackIndex(aIndex) && i != bIndex &&
+		    i != data.BackIndex(bIndex))
+			return false;
 	}
 	return true;
 }
@@ -134,32 +235,58 @@ void MoveR(Vector2 const &point, Vector2 const &circle, float r, Vector2 &left,
 	right = circle - leftDir * sin - dir * cos;
 }
 
-class Station
+void MoveC(Vector2 const &circleA, Vector2 const &circleB, float r,
+	   Vector2 &resultA, Vector2 &resultB, bool turnDir)
 {
-      public:
-	Station();
-};
+	Vector2 center = Vector2::Lerp(circleA, circleB, 0.5f);
+
+	const Vector2 diff = circleB - center;
+	const float distanceDiv = 1.0f / diff.Magnitude();
+	const Vector2 dir = diff * distanceDiv;
+	const Vector2 leftDir(-dir.y, dir.x);
+	const float cos = (r * r) * distanceDiv;
+	const float sin = std::sqrt((r * r) - (cos * cos));
+	resultA = circleA + leftDir * sin * (turnDir ? 1 : -1) + dir * cos;
+	resultB = circleB - leftDir * sin * (turnDir ? 1 : -1) - dir * cos;
+}
+
+void MoveL(Vector2 const &circleA, Vector2 const &circleB, float r,
+	   Vector2 &resultA, Vector2 &resultB, bool turnDir)
+{
+	const Vector2 dir = (circleB - circleA).Normalized();
+	const Vector2 crossDir(-dir.y, dir.x);
+	resultA = circleA + crossDir * r * (turnDir ? 1 : -1);
+	resultB = circleB + crossDir * r * (turnDir ? 1 : -1);
+}
+
+// bool Map::ControlTargetWay(int i)
+// {
+// 	if (IsFrontLeft(i, pos - left) &&
+// 	    CollisionControl(left, pos, i, screen)) {
+// 		stations.insert(
+// 		    {distance, Station(nullptr, pos, left, i, true, distance)});
+// 		went[i] = true;
+// 	}
+// }
 
 void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 {
-
-	// std::map<float, int>;
 
 	if (CollisionControl(pos, target, screen)) {
 		std::cout << "Direct way is clean" << std::endl;
 		return;
 	} else
 		std::cout << "Direct way is not clean" << std::endl;
-	std::vector<int> corners;
 
 	for (int i = 0; i < data.size; i++) {
-		if (PointDir(data.Back(i), data.points[i], data.Forward(i)))
-			corners.push_back(i);
+		went[i] = false;
 	}
 
 	for (int i = 0; i < data.size * 2; i += 2) {
 		screen.DrawLine(walls[i], walls[i + 1], color::yellow);
 	}
+
+	std::multimap<float, Station> stations;
 
 	for (int i : corners) {
 
@@ -175,13 +302,22 @@ void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 		// PointDir(points[(i - 1 + pointsSize) % pointsSize],
 		// points[i], 	 left);
 
-		if (IsFrontLeft(i, pos) &&
-		    CollisionControl(left, pos, i, screen))
-			screen.DrawLine(left, pos, color::blue);
+		float distance = Vector2::Distance(left, pos);
 
-		if (IsFrontRight(i, pos) &&
-		    CollisionControl(right, pos, i, screen))
-			screen.DrawLine(right, pos, color::blue);
+		if (IsFrontLeft(i, pos - left) &&
+		    CollisionControl(left, pos, i, screen)) {
+			stations.insert({distance, Station(nullptr, pos, left,
+							   i, true, distance)});
+			went[i] = true;
+		}
+
+		if (IsFrontRight(i, pos - right) &&
+		    CollisionControl(right, pos, i, screen)) {
+			stations.insert(
+			    {distance,
+			     Station(nullptr, pos, right, i, false, distance)});
+			went[i] = true;
+		}
 
 		// if (PointDir(points[i], points[(i + 1) % pointsSize], right))
 		// 	screen.DrawLine(right, points[i], color::blue);
@@ -191,9 +327,145 @@ void Map::CalculatePath(Vector2 pos, Vector2 target, TestArea &screen)
 		// 	screen.DrawLine(left, points[i], color::blue);
 	}
 
-	Vector2 beforeA;
-	Vector2 beforeB;
-	{
+	for (auto &sPair : stations) {
+		Station const &station = sPair.second;
+
+		Vector2 beforeDir = station.endPos - station.startPos;
+
+		if (station.turnDir) {
+
+			for (int i : corners) {
+				if (went[i])
+					continue;
+				{
+					Vector2 A;
+					Vector2 B;
+
+					MoveC(data.points[station.corner],
+					      data.points[i], r, A, B,
+					      station.turnDir);
+
+					if (IsFrontLeft(station.corner,
+							beforeDir, A - B) &&
+					    IsFrontRight(i, A - B) &&
+					    CollisionControl(A, B,
+							     station.corner, i,
+							     screen)) {
+						{
+							float distance =
+							    Vector2::Distance(
+								A, B);
+							stations.insert(
+							    {sPair.first +
+								 distance,
+							     Station(
+								 &sPair.second,
+								 A, B, i, false,
+								 distance)});
+							went[i] = true;
+							continue;
+						}
+					}
+				}
+
+				{
+					Vector2 A;
+					Vector2 B;
+
+					MoveL(data.points[station.corner],
+					      data.points[i], r, A, B,
+					      station.turnDir);
+
+					if (IsFrontLeft(station.corner,
+							beforeDir, A - B) &&
+					    IsFrontLeft(i, A - B) &&
+					    CollisionControl(A, B,
+							     station.corner, i,
+							     screen)) {
+						{
+							float distance =
+							    Vector2::Distance(
+								A, B);
+							stations.insert(
+							    {sPair.first +
+								 distance,
+							     Station(
+								 &sPair.second,
+								 A, B, i, true,
+								 distance)});
+							went[i] = true;
+						}
+					}
+				}
+			}
+		} else {
+			for (int i : corners) {
+				if (went[i])
+					continue;
+
+				{
+					Vector2 A;
+					Vector2 B;
+
+					MoveC(data.points[station.corner],
+					      data.points[i], r, A, B,
+					      station.turnDir);
+
+					if (IsFrontRight(station.corner,
+							 beforeDir, A - B) &&
+					    IsFrontLeft(i, A - B) &&
+					    CollisionControl(A, B,
+							     station.corner, i,
+							     screen)) {
+						{
+							float distance =
+							    Vector2::Distance(
+								A, B);
+							stations.insert(
+							    {sPair.first +
+								 distance,
+							     Station(
+								 &sPair.second,
+								 A, B, i, true,
+								 distance)});
+							went[i] = true;
+							continue;
+						}
+					}
+				}
+
+				{
+					Vector2 A;
+					Vector2 B;
+
+					MoveL(data.points[station.corner],
+					      data.points[i], r, A, B,
+					      station.turnDir);
+
+					if (IsFrontRight(station.corner,
+							 beforeDir, A - B) &&
+					    IsFrontRight(i, A - B) &&
+					    CollisionControl(A, B,
+							     station.corner, i,
+							     screen)) {
+						{
+							float distance =
+							    Vector2::Distance(
+								A, B);
+							stations.insert(
+							    {sPair.first +
+								 distance,
+							     Station(
+								 &sPair.second,
+								 A, B, i, false,
+								 distance)});
+							went[i] = true;
+						}
+					}
+				}
+			}
+		}
+		screen.DrawLine(station.startPos, station.endPos, color::blue);
 	}
 
 	/*

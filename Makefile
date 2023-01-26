@@ -1,5 +1,5 @@
 NAME = out
-CPPFLAGS = -Wall -Wextra -Wshadow -std=c++20 -MD -Ofast -g
+CPPFLAGS = -Wall -Wextra -Wshadow -std=c++20 -MD -Ofast
 LIBS = -lSDL2 -lpng
 CC = g++
 SRC = main.cpp Window.cpp LineerFunction.cpp TestArea.cpp Map.cpp MapData.cpp
