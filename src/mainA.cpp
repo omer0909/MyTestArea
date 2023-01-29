@@ -24,7 +24,7 @@ int main()
 	//  	rand();
 
 	// create test area
-	TestArea screen(500, 500);
+	TestArea screen(1000, 1000);
 
 	// draw star
 	//  screen.SetPixel(Vector2(50, 50), color::white);
@@ -35,15 +35,15 @@ int main()
 
 	// create random points
 	std::vector<Vector2> points;
-	for (int i = 0; i < 30; i++) {
-		Vector2 tmp(RandomRange(-100, 100), RandomRange(-100, 100));
-		if (tmp.SqrMagnitude() < 100 * 100)
+	for (int i = 0; i < 300; i++) {
+		Vector2 tmp(RandomRange(-200, 200), RandomRange(-200, 200));
+		if (tmp.SqrMagnitude() < 200 * 200)
 			points.push_back(tmp);
 	}
 
 	// draw random points
 	for (unsigned int i = 0; i < points.size(); i++) {
-		screen.SetPixel(points[i], 0xFF00F0FF << i);
+		screen.SetPixel(points[i], TestArea::GetDebugColor());
 	}
 
 	// initialize convex shape points list
@@ -59,7 +59,7 @@ int main()
 	}
 
 	// draw a circle on max height point
-	screen.DrawCircle(points[convex[0]], 5, color::red);
+	screen.DrawCircle(points[convex[0]], 20, color::red);
 
 	// search other convex points with dot product
 	Vector2 lastNormal = Vector2(0, 1);
@@ -102,7 +102,7 @@ int main()
 
 		screen.DrawLine(points[convex[i]],
 				points[convex[(i + 1) % convex.size()]], col);
-		screen.DrawCircle(points[convex[i]], 5, col);
+		screen.DrawCircle(points[convex[i]], 15, col);
 	}
 
 	// search the minimum box on the all points
@@ -162,7 +162,7 @@ int main()
 	// draw minimum area size box
 	Vector2 boxCrossDir(box.dir.y, -box.dir.x);
 
-	screen.DrawCircle(box.pos, 10);
+	screen.DrawCircle(box.pos, 40);
 
 	Vector2 boxPoints[] = {box.pos,
 

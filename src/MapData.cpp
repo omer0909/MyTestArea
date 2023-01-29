@@ -50,7 +50,7 @@ void MapData::ReadFile(std::string const &name)
 		pos.x = std::strtof(tmp.c_str(), nullptr);
 		ssline >> tmp;
 		pos.y = std::strtof(tmp.c_str(), nullptr);
-		points_list.push_back(pos);
+		points_list.push_back(pos * 2);
 	}
 	islands.push_back(counter);
 

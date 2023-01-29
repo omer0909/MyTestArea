@@ -1,6 +1,5 @@
 #include <Map.hpp>
 #include <TestArea.hpp>
-
 #include <chrono>
 
 // auto start = std::chrono::system_clock::now();
@@ -9,32 +8,44 @@
 // std::chrono::duration<float> elapsed_seconds = now - start;
 // std::cout << elapsed_seconds.count() << std::endl;
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 	if (argc != 2) {
 		std::cerr << "./out map.txt" << std::endl;
 		return -1;
 	}
 
-	TestArea screen(500, 500);
-	Map map(argv[1]);
+	TestArea screen(1000, 1000);
+	Map map(argv[1], screen);
 
-	map.DrawWalls(screen);
-	map.CalculatePath(Vector2(-150, -180), Vector2(100, 0), screen);
+	map.DrawWalls();
+	map.CalculatePath(Vector2(-300, -360), Vector2(200, 0));
 
 	return 0;
 }
 
-inline bool InSegmant(Vector2 const &a, Vector2 const &b, Vector2 const &pos)
-{
+int mainF() {
+	TestArea screen(1000, 1000);
+	float r = 15;
+	float start = 0 * ANGLE_TO_RADIAN;
+	float end = 300 * ANGLE_TO_RADIAN;
+	Vector2 pos(400, 200);
+	Vector2 startV = (Vector2(std::cos(start), std::sin(start)) * r) + pos;
+
+	Vector2 endV = (Vector2(std::cos(end), std::sin(end)) * r) + pos;
+
+	screen.DrawCircleAngle(pos, startV, endV, r, false, color::green);
+	screen.DrawCircle(pos, r);
+	return 0;
+}
+
+inline bool InSegmant(Vector2 const &a, Vector2 const &b, Vector2 const &pos) {
 	const Vector2 diff = b - a;
 	float rate = Vector2::DotProduct(diff, (pos - a));
 	return rate > 0 && rate < diff.SqrMagnitude();
 }
 
 inline float SegmantDistance(Vector2 const &a, Vector2 const &b,
-			     Vector2 const &pos)
-{
+                             Vector2 const &pos) {
 	const Vector2 diff = b - a;
 	const Vector2 crossDir(-diff.y, diff.x);
 	const Vector2 pa = pos - a;
@@ -49,8 +60,7 @@ inline float SegmantDistance(Vector2 const &a, Vector2 const &b,
 }
 
 inline float SegmantSqrDistance(Vector2 const &a, Vector2 const &b,
-				Vector2 const &pos)
-{
+                                Vector2 const &pos) {
 	const Vector2 diff = b - a;
 	const Vector2 crossDir(-diff.y, diff.x);
 	const Vector2 pa = pos - a;
@@ -65,19 +75,14 @@ inline float SegmantSqrDistance(Vector2 const &a, Vector2 const &b,
 	return (dot * dot) / crossDir.SqrMagnitude();
 }
 
-int mainA()
-{
+int mainA() {
 	TestArea screen(500, 500);
 	Vector2 a(50, -50);
 	Vector2 b(-100, 0);
 
 	for (int x = -250; x < 250; x++) {
 		for (int y = -250; y < 250; y++) {
-
-			screen.SetPixel(x, y,
-					100 << (int)(SegmantSqrDistance(
-							 a, b, Vector2(x, y)) /
-						     100));
+			screen.SetPixel(x, y, 100 << (int)(SegmantSqrDistance(a, b, Vector2(x, y)) / 100));
 		}
 	}
 
@@ -85,8 +90,7 @@ int mainA()
 	return 0;
 }
 
-int mainE()
-{
+int mainE() {
 	TestArea screen(500, 500);
 
 	Vector2 point(-50, 50);
@@ -116,27 +120,24 @@ int mainE()
 }
 
 #include <map>
-int mainC()
-{
+int mainC() {
 	std::multimap<float, std::string> map;
 
 	map.insert({2.0f, "iki"});
-	map.insert({3.5f, "üç buçuk"});
+	auto tmp = map.insert({3.5f, "üç buçuk"});
 	map.insert({4.0f, "dört"});
 	map.insert({1.0f, "bir"});
 	map.insert({3.0f, "üç"});
 	map.insert({3.0f, "üç new"});
 
 	for (auto &value : map) {
-
 		std::cout << value.second << std::endl;
 	}
+	std::cout << tmp->second << std::endl;
 	return 0;
 }
 
-int mainD()
-{
-
+int mainD() {
 	static auto start = std::chrono::system_clock::now();
 	// char *v = new char[90000000];
 	std::vector<char> v(90000000);
@@ -148,8 +149,7 @@ int mainD()
 	return 0;
 }
 
-int mainT()
-{
+int mainT() {
 	constexpr int size = 50000;
 	typedef float test;
 	test *arr = new test[size];
@@ -171,6 +171,7 @@ int mainT()
 
 		std::cout << elapsed_seconds.count() << std::endl;
 	}
+	return 0;
 }
 // int main()
 // {
