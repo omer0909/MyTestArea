@@ -22,7 +22,6 @@ class TestArea {
    private:
 	unsigned int width;
 	unsigned int height;
-	Window window;
 	void Event();
 	void Show();
 
@@ -36,4 +35,5 @@ class TestArea {
 	void DrawCircleAngle(Vector2 const& center, Vector2 const& start, Vector2 const& end, float radious, bool turnDir, unsigned int color = color::white);
 	void UpdateSurface();
 	static int GetDebugColor();
+	Window window;
 };
