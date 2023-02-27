@@ -8,17 +8,15 @@ struct Box {
 	Vector2 size;
 };
 
-float RandomRange(float start, float end)
-{
+float RandomRange(float start, float end) {
 	float value = end - start;
 	return start + static_cast<float>(rand()) /
-			   (static_cast<float>(RAND_MAX / value));
+	                   (static_cast<float>(RAND_MAX / value));
 }
 
 #include <unistd.h>
 
-int main()
-{
+int main() {
 	// extra randomize
 	//  for (int i = 0; i < 500; i++)
 	//  	rand();
@@ -36,14 +34,14 @@ int main()
 	// create random points
 	std::vector<Vector2> points;
 	for (int i = 0; i < 300; i++) {
-		Vector2 tmp(RandomRange(-200, 200), RandomRange(-200, 200));
-		if (tmp.SqrMagnitude() < 200 * 200)
+		Vector2 tmp(RandomRange(-300, 300), RandomRange(-300, 300));
+		if (tmp.SqrMagnitude() < 300 * 300)
 			points.push_back(tmp);
 	}
 
 	// draw random points
 	for (unsigned int i = 0; i < points.size(); i++) {
-		screen.SetPixel(points[i], TestArea::GetDebugColor());
+		screen.DrawCircle(points[i], 5, TestArea::GetDebugColor());
 	}
 
 	// initialize convex shape points list
@@ -93,15 +91,14 @@ int main()
 	// Draw convex shape
 	screen.DrawLine(points[convex[0]], points[convex[1]], color::white);
 	for (size_t i = 1; i < convex.size(); i++) {
-
 		unsigned int col = color::blue;
 		if (LineerFunction(points[convex[i]],
-				   points[convex[(i + 1) % convex.size()]])
-			.Distance(Vector2(0, 0)) > 0)
+		                   points[convex[(i + 1) % convex.size()]])
+		        .Distance(Vector2(0, 0)) > 0)
 			col = color::green;
 
 		screen.DrawLine(points[convex[i]],
-				points[convex[(i + 1) % convex.size()]], col);
+		                points[convex[(i + 1) % convex.size()]], col);
 		screen.DrawCircle(points[convex[i]], 15, col);
 	}
 
@@ -126,7 +123,6 @@ int main()
 		float boxCMax = std::numeric_limits<float>::min();
 
 		for (auto &point : points) {
-
 			float distance = func.Distance(point);
 			if (distance < boxMin)
 				boxMin = distance;
@@ -166,15 +162,15 @@ int main()
 
 	Vector2 boxPoints[] = {box.pos,
 
-			       box.pos + (box.dir * box.size.y),
+	                       box.pos + (box.dir * box.size.y),
 
-			       box.pos + (box.dir * box.size.y) +
-				   boxCrossDir * box.size.x,
+	                       box.pos + (box.dir * box.size.y) +
+	                           boxCrossDir * box.size.x,
 
-			       box.pos + boxCrossDir * box.size.x};
+	                       box.pos + boxCrossDir * box.size.x};
 
 	for (size_t i = 0; i < 4; i++) {
 		screen.DrawLine(boxPoints[i], boxPoints[(i + 1) % 4],
-				color::yellow);
+		                color::yellow);
 	}
 }
